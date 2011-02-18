@@ -1,0 +1,12 @@
+<ivy-module version="2.0">
+	<info organisation="org.apache" module="hello-ivy" />
+	<dependencies>
+		<dependency org="commons-collections" name="commons-collections"
+			rev="3.2.1" />
+		<dependency org="commons-pool" name="commons-pool" rev="1.5.4" />
+		<dependency org="log4j" name="log4j" rev="1.2.16" />
+		<dependency org="org.slf4j" name="slf4j-api" rev="1.6.0"/>
+		<dependency org="org.slf4j" name="slf4j-log4j12" rev="1.6.0"/>
+		<dependency org="net.sf.trove4j" name="trove4j" rev="2.0.2" />
+	</dependencies>
+</ivy-module>
