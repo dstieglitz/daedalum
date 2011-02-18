@@ -235,7 +235,7 @@ public class JavaSoundAudioDriver implements AudioOutput2 {
 						.getSynchronizer().getStreamTime()) / 1000;
 
 				long time = TimeUtil.audioBytesToMillis(format, arr.length);
-				System.out.println("time=" + time + " diff=" + diff);
+				//System.out.println("time=" + time + " diff=" + diff);
 
 				if (diff > 500) {
 

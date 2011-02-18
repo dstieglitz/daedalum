@@ -158,4 +158,10 @@ public class JavaSoundAudioDriver implements AudioOutput {
 
 	}
 
+	@Override
+	public long getLastPts() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 }
