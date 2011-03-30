@@ -19,7 +19,9 @@
 
 package com.stainlesscode.mediapipeline.demux;
 
+import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Map.Entry;
 
 import org.apache.commons.collections.Buffer;
 import org.apache.commons.collections.BufferOverflowException;
@@ -30,6 +32,7 @@ import com.stainlesscode.mediapipeline.Demultiplexer;
 import com.stainlesscode.mediapipeline.EngineConfiguration;
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEvent;
+import com.stainlesscode.mediapipeline.event.MediaPlayerEventListener;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEvent.Type;
 import com.stainlesscode.mediapipeline.util.MediaPlayerEventSupportedEngineThread;
 import com.stainlesscode.mediapipeline.util.SeekHelper;
@@ -37,7 +40,7 @@ import com.xuggle.xuggler.IError;
 import com.xuggle.xuggler.IPacket;
 
 public class SimpleDemultiplexer extends MediaPlayerEventSupportedEngineThread
-		implements Demultiplexer {
+		implements Demultiplexer, MediaPlayerEventListener {
 
 	private static Logger LogUtil = LoggerFactory
 			.getLogger(SimpleDemultiplexer.class);
@@ -54,8 +57,8 @@ public class SimpleDemultiplexer extends MediaPlayerEventSupportedEngineThread
 	@SuppressWarnings("unchecked")
 	public void run() {
 		while (!isMarkedForDeath()) {
-			if (engineRuntime.isPaused())
-				continue;
+//			if (engineRuntime.isPaused())
+//				continue;
 
 			if (LogUtil.isDebugEnabled())
 				LogUtil.debug("In demultiplexerLoop()");
@@ -162,6 +165,17 @@ public class SimpleDemultiplexer extends MediaPlayerEventSupportedEngineThread
 			} catch (BufferOverflowException e) {
 				System.err.println(e.getMessage());
 				return;
+			}
+		}
+	}
+
+	@Override
+	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
+		LogUtil.debug("got event "+evt);
+		if (evt.getType() == MediaPlayerEvent.Type.SEEK) {
+			Iterator<Entry<Integer, Buffer>> i = engineRuntime.getStreamToBufferMap().entrySet().iterator();
+			while (i.hasNext()) {
+				i.next().getValue().clear();
 			}
 		}
 	}
