@@ -19,6 +19,8 @@
 
 package com.stainlesscode.mediapipeline.sync;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,11 @@ import com.stainlesscode.mediapipeline.event.MediaPlayerEvent;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEventListener;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEventSupport;
 
+/**
+ * 
+ * @author dstieglitz
+ * 
+ */
 public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 		implements Synchronizer, MediaPlayerEventListener {
 
@@ -39,6 +46,8 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	protected Thread clockThread;
 	protected long streamTimeMicroseconds = -1;
 	protected boolean shouldRun = true;
+	protected long streamTimeZero;
+	protected boolean streamTimeZeroSet;
 
 	public MultispeedVptsSynchronizer() {
 		this.clockThread = new Thread(new Runnable() {
@@ -49,10 +58,13 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 					if (engineRuntime != null && !engineRuntime.isPaused()
 							&& streamTimeMicroseconds >= 0) {
 						try {
-							Thread.sleep(1);
+							TimeUnit.MILLISECONDS.sleep(1);
 							streamTimeMicroseconds += new Double(
 									1000.0 * engineRuntime.getPlaySpeed())
 									.longValue();
+							if (LogUtil.isDebugEnabled())
+								LogUtil.debug("streamTime updated to "
+										+ streamTimeMicroseconds);
 							fireMediaPlayerEvent(new MediaPlayerEvent(this,
 									MediaPlayerEvent.Type.STREAM_TIME_TICK,
 									streamTimeMicroseconds));
@@ -92,11 +104,10 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	}
 
 	public void start() {
-		if (this.streamTimeMicroseconds < 0) {
-			LogUtil.info("Starting synchronizer");
-			this.streamTimeMicroseconds = 0;
+		LogUtil.info("Starting synchronizer");
+
+		if (!clockThread.isAlive())
 			clockThread.start();
-		}
 	}
 
 	public void stop() {
@@ -105,11 +116,48 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 
 	@Override
 	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
-		if (evt.getType()==MediaPlayerEvent.Type.SEEK) {
+		if (evt.getType() == MediaPlayerEvent.Type.SEEK) {
 			if (LogUtil.isDebugEnabled())
-				LogUtil.debug("updated streamTimeMicroseconds to "+evt.getData());
-			this.streamTimeMicroseconds = ((Long)evt.getData()).longValue();
+				LogUtil.debug("updated streamTimeMicroseconds to "
+						+ evt.getData());
+			this.streamTimeMicroseconds = this.streamTimeZero
+					+ ((Long) evt.getData()).longValue();
 		}
+	}
+
+	public void setStreamTimeZero(long streamTimeZero, boolean reset) {
+		LogUtil.info("streamZero set to " + streamTimeZero);
+		this.streamTimeZero = streamTimeZero;
+		this.streamTimeZeroSet = true;
+		if (reset) {
+			this.streamTimeMicroseconds = streamTimeZero;
+		} else {
+			this.streamTimeMicroseconds = streamTimeZero
+					+ this.streamTimeMicroseconds;
+		}
+	}
+
+	/**
+	 * Returns the first PTS in the stream, to which streamTime is added as a
+	 * offset to get the stream time relative to this value
+	 * 
+	 * @return
+	 */
+	public long getStreamTimeZero() {
+		return this.streamTimeZero;
+	}
+
+	public boolean isStreamTimeZeroSet() {
+		return streamTimeZeroSet;
+	}
+
+	public void setStreamTimeZeroSet(boolean streamTimeZeroSet) {
+		this.streamTimeZeroSet = streamTimeZeroSet;
+	}
+
+	@Override
+	public boolean syncReady() {
+		return streamTimeZeroSet;
 	}
 
 }
