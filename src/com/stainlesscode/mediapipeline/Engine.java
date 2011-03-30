@@ -47,12 +47,11 @@ import com.stainlesscode.mediapipeline.util.SeekHelper;
 import com.stainlesscode.mediapipeline.util.ThreadWatchdog;
 import com.stainlesscode.mediapipeline.videoout.MediaPlayerEventAwareVideoPlayer;
 import com.xuggle.xuggler.IAudioSamples;
-import com.xuggle.xuggler.ICodec;
 import com.xuggle.xuggler.IContainer;
 import com.xuggle.xuggler.IError;
 import com.xuggle.xuggler.IPixelFormat;
-import com.xuggle.xuggler.IStream;
 import com.xuggle.xuggler.IStreamCoder;
+import com.xuggle.xuggler.IVideoPicture;
 import com.xuggle.xuggler.IVideoResampler;
 
 /**
@@ -90,7 +89,7 @@ public class Engine extends MediaPlayerEventSupport implements
 
 	protected SeekHelper seekHelper;
 	protected boolean started;
-	protected boolean stopAfterFirstFrame;
+//	protected boolean stopAfterFirstFrame;
 	protected String url;
 
 	// singleton
@@ -176,13 +175,15 @@ public class Engine extends MediaPlayerEventSupport implements
 
 		if (engineConfiguration
 				.getConfigurationValueAsBoolean(EngineConfiguration.AUTO_START_KEY)) {
-			if (engineConfiguration
-					.getConfigurationValueAsBoolean(EngineConfiguration.SHOW_FIRST_FRAME_KEY)) {
-				if (LogUtil.isDebugEnabled())
-					LogUtil.debug("will stop after first frame is presented");
-				this.stopAfterFirstFrame = true;
-				this.start();
-			}
+			
+//			if (engineConfiguration
+//					.getConfigurationValueAsBoolean(EngineConfiguration.SHOW_FIRST_FRAME_KEY)) {
+//				if (LogUtil.isDebugEnabled())
+//					LogUtil.debug("will stop after first frame is presented");
+//				this.stopAfterFirstFrame = true;
+//			}
+			
+			this.start();
 		}
 	}
 
@@ -260,35 +261,15 @@ public class Engine extends MediaPlayerEventSupport implements
 						+ engineRuntime.getContainer().getNumStreams()
 						+ " streams");
 			}
+			
+			TrackConfiguration tConfig = new TrackConfiguration();
 
-			// TODO need more robust way to store coders and streams to handle
-			// data, subtitles, etc.
-			// is this a DemultiplexerStrategy? defined in config?
-			for (int i = 0; i < engineRuntime.getContainer().getNumStreams(); i++) {
-				Integer streamId = new Integer(i);
-				IStream stream = engineRuntime.getContainer().getStream(i);
-				IStreamCoder coder = stream.getStreamCoder();
-				packetDecoderMap.put(streamId, coder);
+			// TODO HARDCODED!!!
+//			tConfig.setTrackType(0, TrackConfiguration.Type.VIDEO);
+//			tConfig.setTrackType(1, TrackConfiguration.Type.STEREO_AUDIO);
 
-				if (coder.getCodecType() == ICodec.Type.CODEC_TYPE_VIDEO) {
-					IVideoResampler resampler = getResampler(coder);
-					if (resampler != null) {
-						engineRuntime.setResampler(resampler);
-					}
-					engineRuntime.getStreamToBufferMap().put(streamId,
-							engineRuntime.getVideoPacketBuffer());
-					engineRuntime.setVideoCoder(coder);
-				} else if (coder.getCodecType() == ICodec.Type.CODEC_TYPE_AUDIO) {
-					engineRuntime.getStreamToBufferMap().put(streamId,
-							engineRuntime.getAudioPacketBuffer());
-					engineRuntime.setAudioCoder(coder);
-				}
+			tConfig.init(this);
 
-				if (coder.open() < 0) {
-					// throw new RuntimeException("Could not open stream " + i);
-					LogUtil.warn("Could not open codec for stream " + i);
-				}
-			}
 		} finally {
 			engineRuntime.getContainerLock().unlock();
 		}
@@ -311,6 +292,10 @@ public class Engine extends MediaPlayerEventSupport implements
 					.warn("No VideoOutput specified, creating a default (but it's probably not visible anywhere)");
 			videoOutput = VideoOutputFactory
 					.createVideoOutput(engineConfiguration);
+			if (videoOutput instanceof MediaPlayerEventListener) {
+				this
+						.addMediaPlayerEventListener(((MediaPlayerEventListener) videoOutput));
+			}
 		}
 
 		videoOutput.init(engineRuntime);
@@ -318,8 +303,12 @@ public class Engine extends MediaPlayerEventSupport implements
 		if (audioOutput == null) {
 			audioOutput = AudioOutputFactory
 					.createAudioOutput(engineConfiguration);
-			// XXX EXPERIMENTAL
 			// audioOutput = new PortAudioDriver();
+			// XXX EXPERIMENTAL
+			if (audioOutput instanceof MediaPlayerEventListener) {
+				this
+						.addMediaPlayerEventListener(((MediaPlayerEventListener) audioOutput));
+			}
 		}
 
 		AudioFormat format = new AudioFormat(engineRuntime.getAudioCoder()
@@ -334,6 +323,12 @@ public class Engine extends MediaPlayerEventSupport implements
 
 		videoPlayer = new MediaPlayerEventAwareVideoPlayer(videoOutput,
 				engineRuntime);
+
+		// XXX EXPERIMENTAL
+		if (videoPlayer instanceof MediaPlayerEventListener) {
+			this
+					.addMediaPlayerEventListener(((MediaPlayerEventListener) videoPlayer));
+		}
 
 		if (LogUtil.isDebugEnabled())
 			LogUtil.debug("leaving initializeOutputLayer");
@@ -353,7 +348,7 @@ public class Engine extends MediaPlayerEventSupport implements
 	 * re-start all threads
 	 */
 	public void start() {
-		engineRuntime.setPaused(false);
+		engineRuntime.setPaused(true);
 
 		if (!this.started) { // don't start twice!
 			if (LogUtil.isDebugEnabled())
@@ -475,9 +470,9 @@ public class Engine extends MediaPlayerEventSupport implements
 	public void unpause() {
 		if (LogUtil.isDebugEnabled())
 			LogUtil.debug("Engine--> UNPAUSE");
-		engineRuntime.setPaused(false);
 		if (!this.started)
 			this.start();
+		engineRuntime.setPaused(false);
 	}
 
 	/**
@@ -555,6 +550,11 @@ public class Engine extends MediaPlayerEventSupport implements
 	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
 		if (LogUtil.isDebugEnabled())
 			LogUtil.debug("mediaPlayerEventReceived= " + evt);
+		
+		if (evt.getType() == MediaPlayerEvent.Type.MEDIA_LOADED) {
+			Map metadata = (Map) evt.getData();
+			LogUtil.info(metadata.toString());
+		}
 
 		if (evt.getType() == Type.CLIP_END) {
 			this.audioDecoder.setClipEnded(true);
@@ -573,11 +573,11 @@ public class Engine extends MediaPlayerEventSupport implements
 		}
 
 		// TODO move this behavior to player
-		if (evt.getType() == Type.FIRST_VIDEO_FRAME_PRESENTED
-				&& this.stopAfterFirstFrame) {
-			this.pause();
-			this.stopAfterFirstFrame = false;
-		}
+//		if (evt.getType() == Type.FIRST_VIDEO_FRAME_PRESENTED
+//				&& this.stopAfterFirstFrame) {
+//			this.pause();
+//			this.stopAfterFirstFrame = false;
+//		}
 	}
 
 	public VideoOutput getVideoOutput() {
@@ -622,5 +622,9 @@ public class Engine extends MediaPlayerEventSupport implements
 
 	public EngineConfiguration getEngineConfiguration() {
 		return engineConfiguration;
+	}
+
+	public IVideoPicture getCurrentPicture() {
+		return (IVideoPicture) engineRuntime.getVideoFrameBuffer().get();
 	}
 }
