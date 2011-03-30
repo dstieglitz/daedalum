@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.stainlesscode.mediapipeline.EngineConfiguration;
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.PacketDecoder;
+import com.stainlesscode.mediapipeline.sync.MultispeedVptsSynchronizer;
 import com.stainlesscode.mediapipeline.util.EngineThread;
 import com.xuggle.xuggler.IAudioSamples;
 import com.xuggle.xuggler.IPacket;
@@ -41,6 +42,7 @@ public class DefaultAudioPacketDecoder extends EngineThread implements
 	private EngineRuntime engineRuntime;
 	private IAudioSamples samples = null;
 	private boolean nextFrame = true;
+	private boolean firstTimestamp = true;
 
 	public DefaultAudioPacketDecoder() {
 	}
@@ -102,6 +104,22 @@ public class DefaultAudioPacketDecoder extends EngineThread implements
 			 */
 			if (samples.isComplete()) {
 				try {
+
+					if (firstTimestamp) {
+						LogUtil.info("First audio PTS is "
+								+ samples.getTimeStamp());
+						firstTimestamp = false;
+					}
+					
+					// XXX audio drives sync with this code
+					if (!((MultispeedVptsSynchronizer) engineRuntime
+							.getSynchronizer()).isStreamTimeZeroSet()) {
+
+						((MultispeedVptsSynchronizer) engineRuntime
+								.getSynchronizer()).setStreamTimeZero(samples
+								.getTimeStamp(), true);
+					}
+
 					engineRuntime.getAudioFrameBuffer().add(samples);
 					if (LogUtil.isDebugEnabled()) {
 						LogUtil.debug("$$STORE AUDIO FRAME "
