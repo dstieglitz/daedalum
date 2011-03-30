@@ -113,8 +113,10 @@ public class TimeUtil {
 		return Math.round(timePerFrame * frames * 1000);
 	}
 
-	public static long iAudioSamplesTimeInMicroseconds(AudioFormat format, IAudioSamples samples) {
-		return audioBytesToMillis(format, (int) ((samples.getSize() / samples.getChannels() * (samples.getSampleBitDepth() / 8)))) * 1000;
+	public static long iAudioSamplesTimeInMicroseconds(AudioFormat format,
+			IAudioSamples samples) {
+		return audioBytesToMillis(format, (int) ((samples.getSize()
+				/ samples.getChannels() * (samples.getSampleBitDepth() / 8)))) * 1000;
 	}
 
 }
