@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.stainlesscode.mediapipeline.EngineConfiguration;
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.PacketDecoder;
+import com.stainlesscode.mediapipeline.sync.MultispeedVptsSynchronizer;
 import com.stainlesscode.mediapipeline.util.EngineThread;
 import com.xuggle.xuggler.IError;
 import com.xuggle.xuggler.IPacket;
@@ -49,6 +50,7 @@ public class DefaultVideoPacketDecoder extends EngineThread implements
 			.getLogger(DefaultVideoPacketDecoder.class);
 	private EngineRuntime engineRuntime;
 	private IVideoPicture picture = null;
+	private boolean firstTimestamp = true;
 
 	public DefaultVideoPacketDecoder() {
 	}
@@ -91,6 +93,22 @@ public class DefaultVideoPacketDecoder extends EngineThread implements
 
 			if (picture.isComplete()) {
 				try {
+
+					if (firstTimestamp) {
+						LogUtil.info("First video PTS is "
+								+ picture.getTimeStamp());
+						firstTimestamp = false;
+					}
+
+					// XXX video drives sync with this code.
+//					if (!((MultispeedVptsSynchronizer) engineRuntime
+//							.getSynchronizer()).isStreamTimeZeroSet()) {
+//
+//						((MultispeedVptsSynchronizer) engineRuntime
+//								.getSynchronizer()).setStreamTimeZero(picture
+//								.getTimeStamp(), true);
+//					}
+
 					resampleAndCache(picture);
 					if (engineRuntime.getEngine().getEngineConfiguration()
 							.getConfigurationValueAsBoolean(
@@ -167,7 +185,7 @@ public class DefaultVideoPacketDecoder extends EngineThread implements
 				else
 					continue;
 			}
-			
+
 			IPacket packet = (IPacket) engineRuntime.getVideoPacketBuffer()
 					.remove();
 			if (packet != null) {
