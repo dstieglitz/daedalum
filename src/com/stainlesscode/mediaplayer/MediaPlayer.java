@@ -120,7 +120,7 @@ public class MediaPlayer extends JFrame implements MediaPlayerEventListener {
 
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					engine.start();
+					engine.unpause();
 					playButton.setEnabled(false);
 					pauseButton.setEnabled(true);
 					stopButton.setEnabled(true);
@@ -365,6 +365,9 @@ public class MediaPlayer extends JFrame implements MediaPlayerEventListener {
 				@Override
 				public void run() {
 
+					// get first frame image
+					panel.setCurrentFrame(engine.getCurrentPicture());
+					
 					((MediaPlayerEventSupport) engine.getEngineRuntime()
 							.getSynchronizer())
 							.addMediaPlayerEventListener(slider);
@@ -390,9 +393,7 @@ public class MediaPlayer extends JFrame implements MediaPlayerEventListener {
 							MediaPlayer.this.getX(), MediaPlayer.this.getY()
 									+ MediaPlayer.this.getHeight()));
 				}
-
 			});
-
 		}
 	}
 }

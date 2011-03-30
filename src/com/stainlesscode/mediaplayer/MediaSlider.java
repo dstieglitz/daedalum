@@ -42,6 +42,7 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 	private Logger LogUtil = LoggerFactory.getLogger(MediaSlider.class);
 	private Engine engine;
 	private boolean respondToTicksEnabled = true;
+	private long firstTimestampInStream = -1;
 
 	public MediaSlider() {
 		setEnabled(false);
@@ -54,7 +55,6 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
 		if (evt.getType() == MediaPlayerEvent.Type.MEDIA_LOADED) {
 			Map metadata = (Map) evt.getData();
-			System.out.println(metadata);
 			long duration = ((Long) metadata.get("duration")).longValue();
 			int durationSeconds = (int) duration / 1000000;
 			setMaximum(durationSeconds);
@@ -67,8 +67,14 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 		if (evt.getType() == MediaPlayerEvent.Type.STREAM_TIME_TICK) {
 			// if (LogUtil.isDebugEnabled())
 			// LogUtil.debug("tick " + evt.getData());
+			if (firstTimestampInStream < 0)
+				firstTimestampInStream = ((Long) evt.getData()).longValue();
+
+			int relTimeMillis = (int) (firstTimestampInStream - ((Long) evt
+					.getData()).intValue());
+
 			if (respondToTicksEnabled)
-				setValue(((Long) evt.getData()).intValue() / 1000000);
+				setValue(relTimeMillis / 1000000);
 		}
 	}
 
