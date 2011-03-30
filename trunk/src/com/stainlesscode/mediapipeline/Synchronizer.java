@@ -32,5 +32,7 @@ public interface Synchronizer {
 	void start();
 	
 	void stop();
+	
+	boolean syncReady();
 
 }
