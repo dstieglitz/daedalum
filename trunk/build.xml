@@ -28,9 +28,9 @@
 
 	<path id="clazzpath">
 		<fileset dir="lib" includes="*.jar" />
+		<pathelement location="resources" />
 		<pathelement location="bin" />
-		<fileset dir="${xuggle.jar.dir}" includes="xuggle-xuggler.jar">
-		</fileset>
+		<fileset dir="${xuggle.jar.dir}" includes="xuggle-xuggler.jar"/>
 	</path>
 
 	<!-- ================================= 
