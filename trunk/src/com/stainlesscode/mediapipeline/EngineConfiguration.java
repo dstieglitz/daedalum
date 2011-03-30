@@ -53,13 +53,13 @@ public class EngineConfiguration {
 	public static final String CHECK_THREADS_KEY = "checkThreads";
 
 	public static final String SHOW_FIRST_FRAME_KEY = "showFirstFrame";
-	
+
 	public static final String AUTO_START_KEY = "showFirstFrame";
 
 	public static final String AUDIO_PACKET_DECODER_KEY = "audioPacketDecoder";
 
 	public static final String VIDEO_PACKET_DECODER_KEY = "videoPacketDecoder";
-	
+
 	public static final String USE_OBJECT_POOLS = "useObjectPools";
 
 	private Map<String, String> configuration;
@@ -73,17 +73,18 @@ public class EngineConfiguration {
 		configuration
 				.put(SYNCHRONIZER_KEY,
 						"com.stainlesscode.mediapipeline.sync.MultispeedVptsSynchronizer");
-		configuration.put(AUDIO_OUTPUT_KEY,
-				"com.stainlesscode.mediapipeline.audioout2.JavaSoundAudioDriver");
+		configuration
+				.put(AUDIO_OUTPUT_KEY,
+						"com.stainlesscode.mediapipeline.audioout2.JavaSoundAudioDriver");
 		configuration
 				.put(VIDEO_PACKET_DECODER_KEY,
 						"com.stainlesscode.mediapipeline.packetdecoder.DefaultVideoPacketDecoder");
 		configuration
 				.put(AUDIO_PACKET_DECODER_KEY,
 						"com.stainlesscode.mediapipeline.packetdecoder.DefaultAudioPacketDecoder");
-		configuration.put(VIDEO_PACKET_BUFFER_SIZE_KEY, "500");
-		configuration.put(AUDIO_PACKET_BUFFER_SIZE_KEY, "500");
-		configuration.put(VIDEO_FRAME_BUFFER_SIZE_KEY, "10");
+		configuration.put(VIDEO_PACKET_BUFFER_SIZE_KEY, "1000");
+		configuration.put(AUDIO_PACKET_BUFFER_SIZE_KEY, "1000");
+		configuration.put(VIDEO_FRAME_BUFFER_SIZE_KEY, "33");
 		configuration.put(AUDIO_FRAME_BUFFER_SIZE_KEY, "100");
 		configuration.put(USE_OBJECT_POOLS, "false");
 		configuration.put(CHECK_MEMORY_KEY, "false");
@@ -105,7 +106,7 @@ public class EngineConfiguration {
 			return false;
 		return Boolean.parseBoolean(configuration.get(checkMemoryKey));
 	}
-	
+
 	public void put(String key, String val) {
 		configuration.put(key, val);
 	}
