@@ -26,11 +26,14 @@ import org.slf4j.LoggerFactory;
 import com.stainlesscode.mediapipeline.EngineConfiguration;
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.VideoOutput;
+import com.stainlesscode.mediapipeline.event.MediaPlayerEvent;
+import com.stainlesscode.mediapipeline.event.MediaPlayerEventListener;
 import com.stainlesscode.mediapipeline.util.EngineThread;
 import com.stainlesscode.mediapipeline.util.TimeUtil;
 import com.xuggle.xuggler.IVideoPicture;
 
-public class DefaultVideoPlayer extends EngineThread {
+public class DefaultVideoPlayer extends EngineThread implements
+		MediaPlayerEventListener {
 
 	private static Logger LogUtil = LoggerFactory
 			.getLogger(DefaultVideoPlayer.class);
@@ -39,6 +42,7 @@ public class DefaultVideoPlayer extends EngineThread {
 	protected Buffer videoFrameBuffer;
 	protected VideoOutput videoOutput;
 	protected boolean doSync = true;
+	protected long firstTimestampInStream = -1;
 
 	public DefaultVideoPlayer(VideoOutput screen, EngineRuntime runtime) {
 		this.engineRuntime = runtime;
@@ -49,8 +53,8 @@ public class DefaultVideoPlayer extends EngineThread {
 	public void run() {
 		while (!isMarkedForDeath()) {
 			if (engineRuntime.isPaused()) {
-				if (LogUtil.isDebugEnabled())
-					LogUtil.debug("waiting while paused");
+				if (LogUtil.isTraceEnabled())
+					LogUtil.trace("waiting while paused");
 				continue;
 			}
 
@@ -60,11 +64,14 @@ public class DefaultVideoPlayer extends EngineThread {
 				setMarkedForDeath(true);
 				continue;
 			}
-			
+
 			if (videoFrameBuffer.isEmpty() || !syncReady())
 				continue;
 
 			picture = (IVideoPicture) videoFrameBuffer.remove();
+
+			if (firstTimestampInStream < 0)
+				firstTimestampInStream = picture.getTimeStamp();
 
 			if (picture != null) {
 				if (LogUtil.isDebugEnabled())
@@ -91,7 +98,7 @@ public class DefaultVideoPlayer extends EngineThread {
 					}
 
 					videoOutput.setCurrentFrame(picture.copyReference());
-					
+
 					if (doSync)
 						doSync(true);
 				}
@@ -125,20 +132,26 @@ public class DefaultVideoPlayer extends EngineThread {
 
 	// TODO refactor to AbstractSynchronizedPlayer
 	private boolean syncReady() {
-		return engineRuntime.getSynchronizer().getStreamTime() > 0;
+		return engineRuntime.getSynchronizer().syncReady();
 	}
 
 	protected void doSync(boolean sleep) {
-		long epts = engineRuntime.getSynchronizer().getStreamTime();
-		long pts = videoOutput.getLastPts();
+		long vpts = engineRuntime.getSynchronizer().getStreamTime();
+		long epts = videoOutput.getLastPts();
 
-		if (pts > epts) {
+		if (LogUtil.isDebugEnabled()) {
+			LogUtil.debug("vpts=" + vpts);
+			LogUtil.debug("epts=" + epts);
+			LogUtil.debug("diff=" + (vpts - epts));
+		}
+
+		if (epts > vpts) {
 			// long sleepTimeMillis = 0;
-			long sleepTimeMillis = ((pts - epts) / 1000);
+			long sleepTimeMillis = ((epts - vpts) / 1000);
 			if (LogUtil.isDebugEnabled())
 				LogUtil.debug("sleeping " + sleepTimeMillis);
-			// System.out.println("video seeping "+sleepTimeMillis);
 
+			// System.out.println("video seeping "+sleepTimeMillis);
 			// double sleepTimeMillisD = (1.0d / engineRuntime.getVideoCoder()
 			// .getFrameRate().getValue()) * 1000.0d;
 			// long sleepTimeMillis = new Double(sleepTimeMillisD).longValue();
@@ -152,7 +165,7 @@ public class DefaultVideoPlayer extends EngineThread {
 				if (LogUtil.isDebugEnabled())
 					LogUtil.debug("sleep interrupted");
 			}
-		}
+		} 
 	}
 
 	public boolean isDoSync() {
@@ -161,5 +174,13 @@ public class DefaultVideoPlayer extends EngineThread {
 
 	public void setDoSync(boolean doSync) {
 		this.doSync = doSync;
+	}
+
+	@Override
+	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
+		LogUtil.debug("got event " + evt);
+		if (evt.getType() == MediaPlayerEvent.Type.SEEK) {
+			videoFrameBuffer.clear();
+		}
 	}
 }
