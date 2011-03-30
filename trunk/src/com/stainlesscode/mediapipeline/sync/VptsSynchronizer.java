@@ -99,4 +99,10 @@ public class VptsSynchronizer extends MediaPlayerEventSupport implements
 		shouldRun = false;
 	}
 
+	@Override
+	public boolean syncReady() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

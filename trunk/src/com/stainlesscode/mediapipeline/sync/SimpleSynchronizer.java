@@ -81,4 +81,10 @@ public class SimpleSynchronizer implements Synchronizer {
 		
 	}
 
+	@Override
+	public boolean syncReady() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }
