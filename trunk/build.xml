@@ -47,7 +47,7 @@
 
 	<target name="run" description="Launch a sample media player" depends="build">
 		<java fork="true" classname="com.stainlesscode.mediaplayer.MediaPlayer" classpathref="clazzpath">
-			<sysproperty key="java.library.path" value="${xuggle.home}/lib" />
+			<env key="DYLD_LIBRARY_PATH" value="${xuggle.home}/lib" />
 		</java>
 	</target>
 
