@@ -20,6 +20,7 @@
 package com.stainlesscode.mediapipeline.audioout2;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -34,7 +35,6 @@ import com.stainlesscode.mediapipeline.AudioOutput2;
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEvent;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEventListener;
-import com.stainlesscode.mediapipeline.sync.MultispeedVptsSynchronizer;
 import com.stainlesscode.mediapipeline.util.TimeUtil;
 import com.xuggle.xuggler.IAudioSamples;
 
@@ -49,15 +49,17 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 	private AudioFormat format;
 	private EngineRuntime engineRuntime;
 	private AudioBuffer buf;
-	private int bufferSizeInFrames = 96000;
-	private long firstTimestampInStream = -1;
+	private int bufferSizeInFrames = 48000;
+	// private long firstTimestampInStream = -1;
+	private long chunkTime = 60;
+	private byte[] bbuf = null;
 
 	private static Logger LogUtil = LoggerFactory
 			.getLogger(JavaSoundAudioDriver.class);
 
 	@Override
 	public void close() {
-		firstTimestampInStream = -1;
+		// firstTimestampInStream = -1;
 		buf.clear();
 		line.close();
 	}
@@ -95,9 +97,6 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 		}
 
 		Thread thread = new Thread(new Runnable() {
-
-			private long audioWriteLatency;
-
 			@Override
 			public void run() {
 				while (true) {
@@ -107,53 +106,43 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 					if (JavaSoundAudioDriver.this.engineRuntime
 							.getSynchronizer() != null) {
 
-						long streamTime = JavaSoundAudioDriver.this.engineRuntime
-								.getSynchronizer().getStreamTime();
-
-						// LogUtil.debug("lastPts = "
-						// + JavaSoundAudioDriver.this.lastPts);
-						if (LogUtil.isDebugEnabled()) {
-							LogUtil.debug("streamTime=" + streamTime);
-						}
-
 						long epts = buf.getStartTimestampMillis() * 1000;
-						long vpts = streamTime;
-
-						// System.out
-						// .println("------------ PLAY ------------------");
+						long vpts = JavaSoundAudioDriver.this.engineRuntime
+								.getSynchronizer().getStreamTime();
 
 						if (LogUtil.isDebugEnabled()) {
 							LogUtil.debug("vpts=" + vpts);
 							LogUtil.debug("epts=" + epts);
-							LogUtil.debug("diff=" + (vpts - epts));
 						}
-
-						byte[] bbuf = null;
 
 						// if diff < 0 the audio is ahead
 						// else the video is ahead
 
-						long sleepTime = 0;
-						long chunkTime = 500;
-
 						try {
 							if (epts >= vpts) {
-								// sleepTime = (epts - vpts) / 1000;
+								if (LogUtil.isDebugEnabled()) {
+									// LogUtil.debug("vpts=" + vpts);
+									// LogUtil.debug("epts=" + epts);
+									// LogUtil.debug("audio ahead by "
+									// + (epts - vpts) / 1000l + "ms");
+								}
 								continue;
-							} else {
-								long skipMillis = (vpts - epts) / 1000l;
+							} else if (epts < (vpts - (chunkTime * 1000l))) {
+								long skipMillis = ((vpts - epts) / 1000l)
+										- chunkTime;
+
 								if (LogUtil.isDebugEnabled()) {
 									LogUtil.debug("++++++++++++> SKIPPING "
-											+ skipMillis + " millis");
+											+ skipMillis + " ms");
 								}
 
 								if (skipMillis > 0) {
 									int skipped = buf.skipMillis(skipMillis);
+
 									if (LogUtil.isDebugEnabled()) {
 										LogUtil.debug("actually skipped "
 												+ TimeUtil.audioBytesToMillis(
 														format, skipped));
-										// chunkTime = 0;
 									}
 								}
 							}
@@ -161,7 +150,6 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 							bbuf = buf.readMillis(chunkTime);
 
 						} catch (IOException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 
@@ -169,9 +157,9 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 							Thread.yield();
 						}
 
-						while (line.isActive()) {
-							Thread.yield();
-						}
+						// while (line.isActive()) {
+						// Thread.yield();
+						// }
 
 						// XXX reset the stream time to the audio's stream
 						// time, and don't sleep (audio stream drives clock)
@@ -182,32 +170,20 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 						// - chunkTime, true);
 
 						if (bbuf.length > 0) {
-							if ((sleepTime) > 0) {
-								try {
-									if (LogUtil.isDebugEnabled()) {
-										LogUtil.debug("----------> SLEEPING "
-												+ (sleepTime));
-									}
-									Thread.sleep(sleepTime);
-								} catch (InterruptedException e) {
-
-								}
-							}
-
 							if (LogUtil.isDebugEnabled()) {
 								LogUtil.debug("writing " + bbuf.length);
 							}
 
-							long start = System.currentTimeMillis();
+							// long start = System.currentTimeMillis();
 							line.write(bbuf, 0, bbuf.length);
-							long end = System.currentTimeMillis();
+							// long end = System.currentTimeMillis();
 
-							audioWriteLatency = (end - start);
+							// audioWriteLatency = (end - start);
 
-							if (LogUtil.isDebugEnabled()) {
-								LogUtil.debug("audioWriteLatency="
-										+ audioWriteLatency);
-							}
+							// if (LogUtil.isDebugEnabled()) {
+							// LogUtil.debug("audioWriteLatency="
+							// + audioWriteLatency);
+							// }
 						}
 					}
 				}
@@ -222,21 +198,22 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 		byte[] arr = new byte[samples.getSize()];
 		samples.get(0, arr, 0, arr.length);
 
-		if (firstTimestampInStream < 0) {
-			firstTimestampInStream = samples.getTimeStamp();
-			buf.setStartTimestampMillis(firstTimestampInStream / 1000);
-			buf.setEndTimestampMillis(firstTimestampInStream / 1000);
-
-			// XXX this is done in the decoder
-//			if (!((MultispeedVptsSynchronizer) engineRuntime.getSynchronizer())
-//					.isStreamTimeZeroSet()) {
-//				if (LogUtil.isDebugEnabled())
-//					LogUtil.debug("setting streamTimeZero to "
-//							+ firstTimestampInStream);
-//				((MultispeedVptsSynchronizer) engineRuntime.getSynchronizer())
-//						.setStreamTimeZero(firstTimestampInStream, false);
-//			}
+		if (buf.getStartTimestampMillis() < 0) {
+			buf.setStartTimestampMillis(samples.getTimeStamp() / 1000);
+			buf.setEndTimestampMillis(samples.getTimeStamp() / 1000);
 		}
+
+		// XXX this is done in the decoder
+		// if (!((MultispeedVptsSynchronizer)
+		// engineRuntime.getSynchronizer())
+		// .isStreamTimeZeroSet()) {
+		// if (LogUtil.isDebugEnabled())
+		// LogUtil.debug("setting streamTimeZero to "
+		// + firstTimestampInStream);
+		// ((MultispeedVptsSynchronizer) engineRuntime.getSynchronizer())
+		// .setStreamTimeZero(firstTimestampInStream, false);
+		// }
+		// }
 
 		// long timeAlreadyCached = buf.getCachedAudioTime();
 		// long aboutToCachePts = samples.getTimeStamp();
@@ -271,7 +248,7 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 		if (LogUtil.isDebugEnabled()) {
 			LogUtil.debug("got event " + evt);
 		}
-		
+
 		if (evt.getType() == MediaPlayerEvent.Type.SEEK) {
 			buf.clear();
 		}

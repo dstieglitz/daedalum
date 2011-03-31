@@ -31,6 +31,8 @@ import com.stainlesscode.mediapipeline.event.MediaPlayerEventListener;
 import com.stainlesscode.mediapipeline.event.MediaPlayerEventSupport;
 
 /**
+ * This synchronizer uses an offset from the play start time to keep track of
+ * the play position, but does not sync up with an external clock.
  * 
  * @author dstieglitz
  * 
@@ -48,6 +50,7 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	protected boolean shouldRun = true;
 	protected long streamTimeZero;
 	protected boolean streamTimeZeroSet;
+	protected long elapsedTimePointerNanoseconds;
 
 	public MultispeedVptsSynchronizer() {
 		this.clockThread = new Thread(new Runnable() {
@@ -55,20 +58,31 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 			@Override
 			public void run() {
 				while (shouldRun) {
-					if (engineRuntime != null && !engineRuntime.isPaused()
-							&& streamTimeMicroseconds >= 0) {
+					if (engineRuntime != null && !engineRuntime.isPaused()) {
+						long elapsedTimeNanoseconds = System.nanoTime()
+								- elapsedTimePointerNanoseconds;
+
+						streamTimeMicroseconds += (elapsedTimeNanoseconds / 1000)
+								* engineRuntime.getPlaySpeed();
+
+						if (LogUtil.isDebugEnabled()) {
+							LogUtil.debug("elapsedTimeNanoseconds="
+									+ elapsedTimeNanoseconds);
+							LogUtil.debug("streamTime updated to "
+									+ streamTimeMicroseconds);
+						}
+
+						fireMediaPlayerEvent(new MediaPlayerEvent(this,
+								MediaPlayerEvent.Type.STREAM_TIME_TICK,
+								streamTimeMicroseconds));
+
+						elapsedTimePointerNanoseconds = System.nanoTime();
+
 						try {
-							TimeUnit.MILLISECONDS.sleep(1);
-							streamTimeMicroseconds += new Double(
-									1000.0 * engineRuntime.getPlaySpeed())
-									.longValue();
-							if (LogUtil.isDebugEnabled())
-								LogUtil.debug("streamTime updated to "
-										+ streamTimeMicroseconds);
-							fireMediaPlayerEvent(new MediaPlayerEvent(this,
-									MediaPlayerEvent.Type.STREAM_TIME_TICK,
-									streamTimeMicroseconds));
+							// @29.97fps, 34000 microseconds per frame
+							TimeUnit.MICROSECONDS.sleep(20000);
 						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
@@ -76,7 +90,6 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 				if (LogUtil.isDebugEnabled())
 					LogUtil.debug("thread shutting down gracefully");
 			}
-
 		});
 
 		this.clockThread.setPriority(Thread.MAX_PRIORITY);
@@ -106,8 +119,10 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	public void start() {
 		LogUtil.info("Starting synchronizer");
 
-		if (!clockThread.isAlive())
+		if (!clockThread.isAlive()) {
+			elapsedTimePointerNanoseconds = System.nanoTime();
 			clockThread.start();
+		}
 	}
 
 	public void stop() {
@@ -123,8 +138,22 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 			this.streamTimeMicroseconds = this.streamTimeZero
 					+ ((Long) evt.getData()).longValue();
 		}
+
+		if (evt.getType() == MediaPlayerEvent.Type.PAUSE) {
+			System.out.println("streamTime at pause="
+					+ this.streamTimeMicroseconds);
+		}
+
+		if (evt.getType() == MediaPlayerEvent.Type.UNPAUSE) {
+			elapsedTimePointerNanoseconds = System.nanoTime();
+			System.out.println("streamTime at unpause="
+					+ this.streamTimeMicroseconds);
+			System.out.println("elapsedTimePointer at unpause="
+					+ this.elapsedTimePointerNanoseconds / 1000);
+		}
 	}
 
+	@Override
 	public void setStreamTimeZero(long streamTimeZero, boolean reset) {
 		LogUtil.info("streamZero set to " + streamTimeZero);
 		this.streamTimeZero = streamTimeZero;
