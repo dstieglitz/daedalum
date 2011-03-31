@@ -19,72 +19,145 @@
 
 package com.stainlesscode.mediapipeline.sync;
 
-import org.apache.commons.collections.Buffer;
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.stainlesscode.mediapipeline.EngineRuntime;
 import com.stainlesscode.mediapipeline.Synchronizer;
-import com.xuggle.xuggler.IAudioSamples;
+import com.stainlesscode.mediapipeline.event.MediaPlayerEvent;
+import com.stainlesscode.mediapipeline.event.MediaPlayerEventSupport;
 
 /**
- * This synchronizer uses the PTS of the audio track as the stream clock
+ * This synchronizer uses the system clock as a master clock for timing. Each
+ * stream will compare its epts to the result of stream time to see when it
+ * should present that media to theuser.
  * 
  * @author Dan Stieglitz
  * 
  */
-public class SimpleSynchronizer implements Synchronizer {
+public class SimpleSynchronizer extends MediaPlayerEventSupport implements
+		Synchronizer {
 
 	private static Logger LogUtil = LoggerFactory
 			.getLogger(SimpleSynchronizer.class);
 
 	private EngineRuntime engineRuntime;
-	private long audioWriteLatency;
+	private long clapTime;
+	private long streamTimeMicroseconds;
+	private Thread clockThread;
+	private boolean shouldRun = true;
+	private long streamTimeZero;
+	private boolean streamTimeZeroSet = false;
+	private boolean syncReady = true;
 
-	public void init(EngineRuntime engineRuntime) {
+	public void init(final EngineRuntime engineRuntime) {
 		this.engineRuntime = engineRuntime;
+
+		this.clockThread = new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				while (shouldRun) {
+					if (engineRuntime != null && !engineRuntime.isPaused()) {
+						try {
+							TimeUnit.MILLISECONDS.sleep(1);
+
+							long offset = System.currentTimeMillis() - clapTime;
+
+							if (LogUtil.isDebugEnabled()) {
+								LogUtil.debug("streamTimeZero="
+										+ streamTimeZero);
+								LogUtil.debug("clapTime=" + clapTime);
+								LogUtil.debug("offset=" + offset);
+							}
+
+							streamTimeMicroseconds = (long) (streamTimeZero + (offset * 1000)
+									* engineRuntime.getPlaySpeed());
+
+							fireMediaPlayerEvent(new MediaPlayerEvent(this,
+									MediaPlayerEvent.Type.STREAM_TIME_TICK,
+									streamTimeMicroseconds));
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+				if (LogUtil.isDebugEnabled())
+					LogUtil.debug("thread shutting down gracefully");
+			}
+
+		});
+
+		this.clockThread.setPriority(Thread.MAX_PRIORITY);
+		this.clockThread.start();
 	}
 
-	public void setAudioWriteLatency(long audioWriteLatency) {
-		this.audioWriteLatency = audioWriteLatency;
-	}
-
-	public long getAudioWriteLatency() {
-		return audioWriteLatency;
-	}
-
-	// returns the current stream time, or VPTS for both
-	// audio and video
 	public long getStreamTime() {
-		long streamTime = -1;
-		Buffer buf = engineRuntime.getAudioFrameBuffer();
-		if (!buf.isEmpty()) {
-			IAudioSamples samples = (IAudioSamples) buf.get();
-			if (samples != null)
-				streamTime = samples.getTimeStamp();
-			if (LogUtil.isDebugEnabled())
-				LogUtil.debug("getStreamTime called, and it's " + streamTime);
-		}
-		
-		return streamTime;
+		return streamTimeMicroseconds;
 	}
 
 	@Override
 	public void start() {
-		// TODO Auto-generated method stub
-		
+		clap();
 	}
 
 	@Override
 	public void stop() {
-		// TODO Auto-generated method stub
-		
+		shouldRun = false;
+	}
+
+	public void clap() {
+		long newClapTime = System.currentTimeMillis();
+
+		// adjust stream zero to new clap time
+		if (this.clapTime > 0) {
+			long diff = newClapTime - this.clapTime;
+			if (LogUtil.isDebugEnabled())
+				LogUtil.debug("updating streamTimeZero by " + diff);
+			this.streamTimeZero += diff * 1000;
+		}
+
+		this.clapTime = newClapTime;
 	}
 
 	@Override
 	public boolean syncReady() {
+		return syncReady;
+	}
+
+	public void setStreamTimeZero(long streamTimeZero, boolean reset) {
+		LogUtil.info("streamZero set to " + streamTimeZero);
+		this.streamTimeZero = streamTimeZero;
+		this.streamTimeZeroSet = true;
+	}
+
+	/**
+	 * Returns the first PTS in the stream, to which streamTime is added as a
+	 * offset to get the stream time relative to this value
+	 * 
+	 * @return
+	 */
+	public long getStreamTimeZero() {
+		return this.streamTimeZero;
+	}
+
+	@Override
+	public long getAudioWriteLatency() {
 		// TODO Auto-generated method stub
-		return false;
+		return 0;
+	}
+
+	@Override
+	public void setAudioWriteLatency(long l) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public boolean isStreamTimeZeroSet() {
+		return streamTimeZeroSet;
 	}
 
 }
