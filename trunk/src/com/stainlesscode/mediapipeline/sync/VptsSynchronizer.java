@@ -105,4 +105,16 @@ public class VptsSynchronizer extends MediaPlayerEventSupport implements
 		return false;
 	}
 
+	@Override
+	public boolean isStreamTimeZeroSet() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void setStreamTimeZero(long timeStamp, boolean b) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
