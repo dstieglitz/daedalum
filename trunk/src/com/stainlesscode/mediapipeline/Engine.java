@@ -175,15 +175,6 @@ public class Engine extends MediaPlayerEventSupport implements
 
 		if (engineConfiguration
 				.getConfigurationValueAsBoolean(EngineConfiguration.AUTO_START_KEY)) {
-
-			// if (engineConfiguration
-			// .getConfigurationValueAsBoolean(EngineConfiguration.SHOW_FIRST_FRAME_KEY))
-			// {
-			// if (LogUtil.isDebugEnabled())
-			// LogUtil.debug("will stop after first frame is presented");
-			// this.stopAfterFirstFrame = true;
-			// }
-
 			this.start();
 		}
 	}
@@ -304,8 +295,6 @@ public class Engine extends MediaPlayerEventSupport implements
 		if (audioOutput == null) {
 			audioOutput = AudioOutputFactory
 					.createAudioOutput(engineConfiguration);
-			// audioOutput = new PortAudioDriver();
-			// XXX EXPERIMENTAL
 			if (audioOutput instanceof MediaPlayerEventListener) {
 				this
 						.addMediaPlayerEventListener(((MediaPlayerEventListener) audioOutput));
@@ -325,7 +314,6 @@ public class Engine extends MediaPlayerEventSupport implements
 		videoPlayer = new MediaPlayerEventAwareVideoPlayer(videoOutput,
 				engineRuntime);
 
-		// XXX EXPERIMENTAL
 		if (videoPlayer instanceof MediaPlayerEventListener) {
 			this
 					.addMediaPlayerEventListener(((MediaPlayerEventListener) videoPlayer));
