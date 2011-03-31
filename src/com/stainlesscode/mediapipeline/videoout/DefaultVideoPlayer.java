@@ -43,6 +43,7 @@ public class DefaultVideoPlayer extends EngineThread implements
 	protected VideoOutput videoOutput;
 	protected boolean doSync = true;
 	protected long firstTimestampInStream = -1;
+	protected long frameDuration = 0;
 
 	public DefaultVideoPlayer(VideoOutput screen, EngineRuntime runtime) {
 		this.engineRuntime = runtime;
@@ -67,6 +68,21 @@ public class DefaultVideoPlayer extends EngineThread implements
 
 			if (videoFrameBuffer.isEmpty() || !syncReady())
 				continue;
+			
+			// sync here... if we are ahead of the vpts just continue the loop
+			
+			long vpts = engineRuntime.getSynchronizer().getStreamTime();
+			long epts = videoOutput.getLastPts();
+
+			if (LogUtil.isDebugEnabled()) {
+				LogUtil.debug("vpts=" + vpts);
+				LogUtil.debug("epts=" + epts);
+				LogUtil.debug("diff=" + (vpts - epts));
+			}
+
+			if (epts + frameDuration > vpts) {
+				continue;
+			}
 
 			picture = (IVideoPicture) videoFrameBuffer.remove();
 
@@ -98,9 +114,9 @@ public class DefaultVideoPlayer extends EngineThread implements
 					}
 
 					videoOutput.setCurrentFrame(picture.copyReference());
-
-					if (doSync)
-						doSync(true);
+					
+//					if (doSync)
+//						doSync(true);
 				}
 			} else {
 				if (LogUtil.isDebugEnabled())
@@ -135,6 +151,10 @@ public class DefaultVideoPlayer extends EngineThread implements
 		return engineRuntime.getSynchronizer().syncReady();
 	}
 
+	/**
+	 * @deprecated sync in main loop
+	 * @param sleep
+	 */
 	protected void doSync(boolean sleep) {
 		long vpts = engineRuntime.getSynchronizer().getStreamTime();
 		long epts = videoOutput.getLastPts();
@@ -165,7 +185,7 @@ public class DefaultVideoPlayer extends EngineThread implements
 				if (LogUtil.isDebugEnabled())
 					LogUtil.debug("sleep interrupted");
 			}
-		} 
+		}
 	}
 
 	public boolean isDoSync() {
@@ -178,7 +198,9 @@ public class DefaultVideoPlayer extends EngineThread implements
 
 	@Override
 	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
-		LogUtil.debug("got event " + evt);
+		if (LogUtil.isDebugEnabled())
+			LogUtil.debug("got event " + evt);
+
 		if (evt.getType() == MediaPlayerEvent.Type.SEEK) {
 			videoFrameBuffer.clear();
 		}
