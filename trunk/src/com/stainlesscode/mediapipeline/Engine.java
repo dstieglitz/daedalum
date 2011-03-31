@@ -89,7 +89,7 @@ public class Engine extends MediaPlayerEventSupport implements
 
 	protected SeekHelper seekHelper;
 	protected boolean started;
-//	protected boolean stopAfterFirstFrame;
+	// protected boolean stopAfterFirstFrame;
 	protected String url;
 
 	// singleton
@@ -175,14 +175,15 @@ public class Engine extends MediaPlayerEventSupport implements
 
 		if (engineConfiguration
 				.getConfigurationValueAsBoolean(EngineConfiguration.AUTO_START_KEY)) {
-			
-//			if (engineConfiguration
-//					.getConfigurationValueAsBoolean(EngineConfiguration.SHOW_FIRST_FRAME_KEY)) {
-//				if (LogUtil.isDebugEnabled())
-//					LogUtil.debug("will stop after first frame is presented");
-//				this.stopAfterFirstFrame = true;
-//			}
-			
+
+			// if (engineConfiguration
+			// .getConfigurationValueAsBoolean(EngineConfiguration.SHOW_FIRST_FRAME_KEY))
+			// {
+			// if (LogUtil.isDebugEnabled())
+			// LogUtil.debug("will stop after first frame is presented");
+			// this.stopAfterFirstFrame = true;
+			// }
+
 			this.start();
 		}
 	}
@@ -261,7 +262,7 @@ public class Engine extends MediaPlayerEventSupport implements
 						+ engineRuntime.getContainer().getNumStreams()
 						+ " streams");
 			}
-			
+
 			TrackConfiguration tConfig = new TrackConfiguration();
 
 			// TODO HARDCODED!!!
@@ -462,6 +463,9 @@ public class Engine extends MediaPlayerEventSupport implements
 		if (LogUtil.isDebugEnabled())
 			LogUtil.debug("Engine--> PAUSE");
 		engineRuntime.setPaused(true);
+
+		fireMediaPlayerEvent(new MediaPlayerEvent(this,
+				MediaPlayerEvent.Type.PAUSE, null));
 	}
 
 	/**
@@ -472,7 +476,14 @@ public class Engine extends MediaPlayerEventSupport implements
 			LogUtil.debug("Engine--> UNPAUSE");
 		if (!this.started)
 			this.start();
+
+		// re-clap the synchronizer
+		//engineRuntime.getSynchronizer().start();
+
 		engineRuntime.setPaused(false);
+
+		fireMediaPlayerEvent(new MediaPlayerEvent(this,
+				MediaPlayerEvent.Type.UNPAUSE, null));
 	}
 
 	/**
@@ -550,7 +561,7 @@ public class Engine extends MediaPlayerEventSupport implements
 	public void mediaPlayerEventReceived(MediaPlayerEvent evt) {
 		if (LogUtil.isDebugEnabled())
 			LogUtil.debug("mediaPlayerEventReceived= " + evt);
-		
+
 		if (evt.getType() == MediaPlayerEvent.Type.MEDIA_LOADED) {
 			Map metadata = (Map) evt.getData();
 			LogUtil.info(metadata.toString());
@@ -573,11 +584,11 @@ public class Engine extends MediaPlayerEventSupport implements
 		}
 
 		// TODO move this behavior to player
-//		if (evt.getType() == Type.FIRST_VIDEO_FRAME_PRESENTED
-//				&& this.stopAfterFirstFrame) {
-//			this.pause();
-//			this.stopAfterFirstFrame = false;
-//		}
+		// if (evt.getType() == Type.FIRST_VIDEO_FRAME_PRESENTED
+		// && this.stopAfterFirstFrame) {
+		// this.pause();
+		// this.stopAfterFirstFrame = false;
+		// }
 	}
 
 	public VideoOutput getVideoOutput() {
