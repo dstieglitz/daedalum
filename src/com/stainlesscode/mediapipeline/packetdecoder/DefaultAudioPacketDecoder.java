@@ -110,14 +110,12 @@ public class DefaultAudioPacketDecoder extends EngineThread implements
 								+ samples.getTimeStamp());
 						firstTimestamp = false;
 					}
-					
-					// XXX audio drives sync with this code
-					if (!((MultispeedVptsSynchronizer) engineRuntime
-							.getSynchronizer()).isStreamTimeZeroSet()) {
 
-						((MultispeedVptsSynchronizer) engineRuntime
-								.getSynchronizer()).setStreamTimeZero(samples
-								.getTimeStamp(), true);
+					// XXX audio drives sync with this code
+					if (!engineRuntime.getSynchronizer().isStreamTimeZeroSet()) {
+
+						engineRuntime.getSynchronizer().setStreamTimeZero(
+								samples.getTimeStamp(), true);
 					}
 
 					engineRuntime.getAudioFrameBuffer().add(samples);
