@@ -35,4 +35,8 @@ public interface Synchronizer {
 	
 	boolean syncReady();
 
+	boolean isStreamTimeZeroSet();
+
+	void setStreamTimeZero(long timeStamp, boolean b);
+
 }
