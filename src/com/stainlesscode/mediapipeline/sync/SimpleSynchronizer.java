@@ -160,4 +160,40 @@ public class SimpleSynchronizer extends MediaPlayerEventSupport implements
 		return streamTimeZeroSet;
 	}
 
+	@Override
+	public long getAudioClock() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long getFrameTimer() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long getVideoClock() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public void setAudioClock(long audioClock) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setFrameTimer(long frameTimer) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setVideoClock(long videoClock) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

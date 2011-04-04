@@ -38,7 +38,10 @@ import com.xuggle.xuggler.IMediaData;
 
 /**
  * Buffer of IMediaData objects.
+ * 
  * TODO remove casts since changing the underlying array type
+ * 
+ * ALL TIMESTAMPS IN MICROSECONDS
  * 
  * @author Dan Stieglitz
  * 
@@ -57,6 +60,8 @@ public class CircularFifoMediaBuffer extends MediaPlayerEventSupport implements
 	protected Lock lock = new ReentrantLock(false);
 	protected Condition bufferFull = lock.newCondition();
 	protected Condition bufferEmpty = lock.newCondition();
+	protected long startTimestamp = -1;
+	protected long endTimestamp = -1;
 
 	public CircularFifoMediaBuffer(Integer number) {
 		data = new IMediaData[number];
@@ -182,12 +187,15 @@ public class CircularFifoMediaBuffer extends MediaPlayerEventSupport implements
 				LogUtil.debug("value=" + value);
 			}
 
-			if ((get() != null)
-					&& (((IMediaData) get()).getTimeStamp() > ((IMediaData) value)
-							.getTimeStamp())) {
-				placeInOrder(((IMediaData) value));
+			IMediaData mediaData = (IMediaData) value;
+			IMediaData tailValue = (IMediaData) get();
+
+			if (tailValue != null
+					&& tailValue.getTimeStamp() > mediaData.getTimeStamp()) {
+				placeInOrder(mediaData);
 			} else {
-				data[tail++] = (IMediaData) value;
+				data[tail++] = mediaData;
+				this.endTimestamp = mediaData.getTimeStamp();
 			}
 
 			if (tail == data.length) {
@@ -241,6 +249,10 @@ public class CircularFifoMediaBuffer extends MediaPlayerEventSupport implements
 			}
 
 			fillCount--;
+
+			if (fillCount > 0)
+				this.startTimestamp = ((IMediaData) peekAt(head))
+						.getTimeStamp();
 
 			bufferFull.signal();
 		} catch (InterruptedException e1) {
@@ -374,5 +386,21 @@ public class CircularFifoMediaBuffer extends MediaPlayerEventSupport implements
 	public Object[] toArray(Object[] a) {
 		throw new UnsupportedOperationException(
 				"This operation is not supported.");
+	}
+
+	public long getStartTimestamp() {
+		return startTimestamp;
+	}
+
+	public void setStartTimestamp(long startTimestamp) {
+		this.startTimestamp = startTimestamp;
+	}
+
+	public long getEndTimestamp() {
+		return endTimestamp;
+	}
+
+	public void setEndTimestamp(long endTimestamp) {
+		this.endTimestamp = endTimestamp;
 	}
 }
