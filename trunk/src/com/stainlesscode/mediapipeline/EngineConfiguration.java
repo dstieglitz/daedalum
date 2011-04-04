@@ -84,7 +84,7 @@ public class EngineConfiguration {
 						"com.stainlesscode.mediapipeline.packetdecoder.DefaultAudioPacketDecoder");
 		configuration.put(VIDEO_PACKET_BUFFER_SIZE_KEY, "1000");
 		configuration.put(AUDIO_PACKET_BUFFER_SIZE_KEY, "1000");
-		configuration.put(VIDEO_FRAME_BUFFER_SIZE_KEY, "33");
+		configuration.put(VIDEO_FRAME_BUFFER_SIZE_KEY, "50");
 		configuration.put(AUDIO_FRAME_BUFFER_SIZE_KEY, "100");
 		configuration.put(USE_OBJECT_POOLS, "false");
 		configuration.put(CHECK_MEMORY_KEY, "false");

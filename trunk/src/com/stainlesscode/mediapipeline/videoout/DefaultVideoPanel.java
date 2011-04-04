@@ -88,8 +88,8 @@ public class DefaultVideoPanel extends MediaPlayerEventSupportedJComponent
 	}
 
 	public void setCurrentFrame(final IVideoPicture picture) {
-		if (LogUtil.isDebugEnabled())
-			LogUtil.debug("setting picture " + picture.getTimeStamp());
+//		if (LogUtil.isDebugEnabled())
+//			LogUtil.debug("setting picture " + picture.getTimeStamp());
 
 		// this.currentPicture = picture;
 		this.lastPts = picture.getPts();
@@ -190,13 +190,16 @@ public class DefaultVideoPanel extends MediaPlayerEventSupportedJComponent
 						videoSize.height, true);
 			}
 
-			if (LogUtil.isDebugEnabled())
-				LogUtil.debug("$$VIDEO PLAY " + lastPts);
+			long streamTime = engineRuntime.getSynchronizer().getStreamTime();
+
+			if (LogUtil.isDebugEnabled()) {
+				LogUtil.debug("epts-vpts=" + (lastPts - streamTime) + "us");
+			}
+
 			g.drawImage(currentFrame, 0, 0, this);
 
 			if (showTimecode) {
-				String str = getTimecode(engineRuntime.getSynchronizer()
-						.getStreamTime());
+				String str = getTimecode(streamTime);
 				g.setColor(Color.white);
 				Font f = new Font("Sans", Font.BOLD, 60);
 				g.setFont(f);

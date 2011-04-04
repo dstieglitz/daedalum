@@ -53,6 +53,7 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 	// private long firstTimestampInStream = -1;
 	private long chunkTime = 60;
 	private byte[] bbuf = null;
+	private long threshold = 60000;
 
 	private static Logger LogUtil = LoggerFactory
 			.getLogger(JavaSoundAudioDriver.class);
@@ -71,11 +72,11 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 
 	@Override
 	public long getLastPts() {
-		return buf.getStartTimestampMillis() * 1000;
+		return buf.getStartTimestamp();
 	}
 
 	@Override
-	public void init(EngineRuntime engineRuntime, final AudioFormat format) {
+	public void init(final EngineRuntime engineRuntime, final AudioFormat format) {
 		this.engineRuntime = engineRuntime;
 		this.format = format;
 		DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
@@ -90,7 +91,9 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 
 		try {
 			line = (SourceDataLine) AudioSystem.getLine(info);
-			line.open(format);
+			int bufSize = TimeUtil.millisToAudioFrames(format, chunkTime) * format.getFrameSize();
+			System.out.println(bufSize);
+			line.open(format,bufSize);
 			line.start();
 		} catch (LineUnavailableException e) {
 			throw new RuntimeException(e);
@@ -106,13 +109,14 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 					if (JavaSoundAudioDriver.this.engineRuntime
 							.getSynchronizer() != null) {
 
-						long epts = buf.getStartTimestampMillis() * 1000;
 						long vpts = JavaSoundAudioDriver.this.engineRuntime
 								.getSynchronizer().getStreamTime();
+						long epts = buf.getStartTimestamp();
 
 						if (LogUtil.isDebugEnabled()) {
-							LogUtil.debug("vpts=" + vpts);
-							LogUtil.debug("epts=" + epts);
+							// LogUtil.debug("vpts=" + vpts);
+							// LogUtil.debug("epts=" + epts);
+							LogUtil.debug("epts-vpts=" + (epts - vpts));
 						}
 
 						// if diff < 0 the audio is ahead
@@ -125,31 +129,37 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 									// LogUtil.debug("epts=" + epts);
 									// LogUtil.debug("audio ahead by "
 									// + (epts - vpts) / 1000l + "ms");
+									// long sleep = chunkTime * 1000l;
+									// LogUtil.debug("sleeping " + sleep +
+									// "us");
 								}
+								TimeUnit.MICROSECONDS.sleep(1000);
 								continue;
-							} else if (epts < (vpts - (chunkTime * 1000l))) {
-								long skipMillis = ((vpts - epts) / 1000l)
-										- chunkTime;
-
+							} else if (vpts - epts > threshold) {
+								long skipMillis = (vpts - epts) / 1000l;
+								//
 								if (LogUtil.isDebugEnabled()) {
 									LogUtil.debug("++++++++++++> SKIPPING "
 											+ skipMillis + " ms");
 								}
-
-								if (skipMillis > 0) {
-									int skipped = buf.skipMillis(skipMillis);
-
-									if (LogUtil.isDebugEnabled()) {
-										LogUtil.debug("actually skipped "
-												+ TimeUtil.audioBytesToMillis(
-														format, skipped));
-									}
-								}
+								//
+								if (skipMillis > 0)
+									buf.skipMillis(skipMillis);
+								//
+								// if (LogUtil.isDebugEnabled()) {
+								// LogUtil.debug("actually skipped "
+								// + TimeUtil.audioBytesToMillis(
+								// format, skipped));
+								// }
+								// }
+								continue;
 							}
 
 							bbuf = buf.readMillis(chunkTime);
 
 						} catch (IOException e) {
+							e.printStackTrace();
+						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 
@@ -170,9 +180,16 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 						// - chunkTime, true);
 
 						if (bbuf.length > 0) {
-							if (LogUtil.isDebugEnabled()) {
-								LogUtil.debug("writing " + bbuf.length);
-							}
+							// if (LogUtil.isDebugEnabled()) {
+							// if (LogUtil.isDebugEnabled()) {
+							// vpts = JavaSoundAudioDriver.this.engineRuntime
+							// .getSynchronizer().getStreamTime();
+							// LogUtil.debug("epts-vpts=" + (epts - vpts)
+							// / 1000l + "ms");
+							// }
+							// }
+
+							engineRuntime.getSynchronizer().setAudioClock(epts);
 
 							// long start = System.currentTimeMillis();
 							line.write(bbuf, 0, bbuf.length);
@@ -198,9 +215,10 @@ public class JavaSoundAudioDriver implements AudioOutput2,
 		byte[] arr = new byte[samples.getSize()];
 		samples.get(0, arr, 0, arr.length);
 
-		if (buf.getStartTimestampMillis() < 0) {
-			buf.setStartTimestampMillis(samples.getTimeStamp() / 1000);
-			buf.setEndTimestampMillis(samples.getTimeStamp() / 1000);
+		// the AudioBuffer uses RELATIVE time when reading/writing buffers
+		if (buf.getStartTimestamp() < 0) {
+			buf.setStartTimestamp(samples.getTimeStamp());
+			buf.setEndTimestamp(samples.getTimeStamp());
 		}
 
 		// XXX this is done in the decoder

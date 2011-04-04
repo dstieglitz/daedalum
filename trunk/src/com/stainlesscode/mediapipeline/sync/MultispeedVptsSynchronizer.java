@@ -51,6 +51,11 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	protected long streamTimeZero;
 	protected boolean streamTimeZeroSet;
 	protected long elapsedTimePointerNanoseconds;
+	
+	// these values are set by the respective threads and shared though the synchronizer
+	protected long videoClock;
+	protected long audioClock;
+	protected long frameTimer;
 
 	public MultispeedVptsSynchronizer() {
 		this.clockThread = new Thread(new Runnable() {
@@ -80,7 +85,7 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 
 						try {
 							// @29.97fps, 34000 microseconds per frame
-							TimeUnit.MICROSECONDS.sleep(20000);
+							TimeUnit.MICROSECONDS.sleep(5000);
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -187,6 +192,30 @@ public class MultispeedVptsSynchronizer extends MediaPlayerEventSupport
 	@Override
 	public boolean syncReady() {
 		return streamTimeZeroSet;
+	}
+
+	public long getVideoClock() {
+		return videoClock;
+	}
+
+	public void setVideoClock(long videoClock) {
+		this.videoClock = videoClock;
+	}
+
+	public long getAudioClock() {
+		return audioClock;
+	}
+
+	public void setAudioClock(long audioClock) {
+		this.audioClock = audioClock;
+	}
+
+	public long getFrameTimer() {
+		return frameTimer;
+	}
+
+	public void setFrameTimer(long frameTimer) {
+		this.frameTimer = frameTimer;
 	}
 
 }

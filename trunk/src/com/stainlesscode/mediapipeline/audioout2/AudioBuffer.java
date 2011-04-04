@@ -33,6 +33,11 @@ import com.stainlesscode.mediapipeline.util.TimeUtil;
  * A decorated byte buffer wrapping audio data, with methods included that allow
  * the retrieval or skipping of audio data by time to facilitate A/V sync.
  * 
+ * TODO start and end timestamp methods and implementation should be refactored to a media 
+ * buffer class; the CircularFifoMediaBuffer use them also.
+ * 
+ * ALL TIMESTAMPS IN MICROSECONDS
+ * 
  * @author Dan Stieglitz
  * 
  */
@@ -41,8 +46,8 @@ public class AudioBuffer {
 	private CircularByteBuffer underlyingBuffer;
 	private long bufferTime;
 	private AudioFormat format;
-	private long startTimestampMillis = -1;
-	private long endTimestampMillis = -1;
+	private long startTimestamp= -1;
+	private long endTimestamp = -1;
 
 	private static Logger LogUtil = LoggerFactory.getLogger(AudioBuffer.class);
 
@@ -55,8 +60,8 @@ public class AudioBuffer {
 
 	public void clear() {
 		underlyingBuffer.clear();
-		startTimestampMillis = 0;
-		endTimestampMillis = 0;
+		startTimestamp = -1;
+		endTimestamp = -1;
 		bufferTime = 0;
 	}
 
@@ -78,7 +83,7 @@ public class AudioBuffer {
 
 	public void write(byte[] b) throws IOException {
 		long audioTime = TimeUtil.audioBytesToMillis(format, b.length);
-		endTimestampMillis += audioTime;
+		endTimestamp += audioTime * 1000;
 		underlyingBuffer.getOutputStream().write(b);
 	}
 
@@ -116,7 +121,7 @@ public class AudioBuffer {
 			LogUtil.debug("read from underlyingBuffer=" + read + " (len=" + len
 					+ ")");
 		
-		startTimestampMillis += TimeUtil.audioBytesToMillis(format, len);
+		startTimestamp += TimeUtil.audioBytesToMillis(format, len) * 1000;
 		return data;
 	}
 
@@ -162,20 +167,19 @@ public class AudioBuffer {
 				.getAvailable());
 	}
 
-	public void setStartTimestampMillis(long startTimestamp) {
-		this.startTimestampMillis = startTimestamp;
+	public long getStartTimestamp() {
+		return startTimestamp;
 	}
 
-	public long getStartTimestampMillis() {
-		return startTimestampMillis;
+	public void setStartTimestamp(long startTimestamp) {
+		this.startTimestamp = startTimestamp;
 	}
 
-	public void setEndTimestampMillis(long endTimestamp) {
-		this.endTimestampMillis = endTimestamp;
+	public long getEndTimestamp() {
+		return endTimestamp;
 	}
 
-	public long getEndTimestampMillis() {
-		return endTimestampMillis;
+	public void setEndTimestamp(long endTimestamp) {
+		this.endTimestamp = endTimestamp;
 	}
-
 }

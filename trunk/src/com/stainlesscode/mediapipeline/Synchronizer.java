@@ -38,5 +38,19 @@ public interface Synchronizer {
 	boolean isStreamTimeZeroSet();
 
 	void setStreamTimeZero(long timeStamp, boolean b);
+	
+	long getAudioClock();
+	
+	void setAudioClock(long audioClock);
+	
+	long getVideoClock();
+	
+	void setVideoClock(long videoClock);
+	
+	long getFrameTimer();
+	
+	void setFrameTimer(long frameTimer);
+	
+	long getStreamTimeZero();
 
 }

@@ -65,8 +65,9 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 		}
 
 		if (evt.getType() == MediaPlayerEvent.Type.STREAM_TIME_TICK) {
-			// if (LogUtil.isDebugEnabled())
-			// LogUtil.debug("tick " + evt.getData());
+			if (LogUtil.isDebugEnabled())
+				LogUtil.debug("tick " + evt.getData());
+
 			if (firstTimestampInStream < 0)
 				firstTimestampInStream = ((Long) evt.getData()).longValue();
 
@@ -120,6 +121,7 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 		if (!respondToTicksEnabled) {
 			if (LogUtil.isDebugEnabled())
 				LogUtil.debug("slider got mouse change event");
+			
 			long newVal = (long) getValue() * 1000000L;
 			if (LogUtil.isDebugEnabled())
 				LogUtil.debug("slider seeking to "
@@ -127,5 +129,4 @@ public class MediaSlider extends JSlider implements MediaPlayerEventListener,
 			engine.seek(newVal);
 		}
 	}
-
 }
