@@ -74,6 +74,7 @@ public class DefaultVideoPanel extends MediaPlayerEventSupportedJComponent
 	protected IConverter converter;
 
 	private boolean firstFrame = true;
+	private boolean showRelativeTime = true;
 
 	private long lastPts;
 
@@ -88,8 +89,8 @@ public class DefaultVideoPanel extends MediaPlayerEventSupportedJComponent
 	}
 
 	public void setCurrentFrame(final IVideoPicture picture) {
-//		if (LogUtil.isDebugEnabled())
-//			LogUtil.debug("setting picture " + picture.getTimeStamp());
+		// if (LogUtil.isDebugEnabled())
+		// LogUtil.debug("setting picture " + picture.getTimeStamp());
 
 		// this.currentPicture = picture;
 		this.lastPts = picture.getPts();
@@ -191,6 +192,11 @@ public class DefaultVideoPanel extends MediaPlayerEventSupportedJComponent
 			}
 
 			long streamTime = engineRuntime.getSynchronizer().getStreamTime();
+
+			if (showRelativeTime) {
+				streamTime = streamTime
+						- engineRuntime.getSynchronizer().getStreamTimeZero();
+			}
 
 			if (LogUtil.isDebugEnabled()) {
 				LogUtil.debug("epts-vpts=" + (lastPts - streamTime) + "us");
